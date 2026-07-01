@@ -3,7 +3,6 @@
 
 #include "pins.h"
 #include <Arduino.h>
-#include <Bluepad32.h>
 
 // Power-tilakoneen tilat
 enum PowerState {
@@ -68,7 +67,7 @@ void initPins() {
     pinMode(STATUS_LED_PIN, OUTPUT);
     pinMode(POWER_LED_PIN, OUTPUT);
     pinMode(BUTTON_PIN, INPUT_PULLUP);
-    pinMode(PC_MONITOR_PIN, INPUT);
+    pinMode(PC_MONITOR_PIN, INPUT_PULLDOWN);
     pinMode(EXTRA_PIN, OUTPUT);
     
     bool initial = digitalRead(PC_MONITOR_PIN);
@@ -129,13 +128,6 @@ void updatePcState() {
             if (powerState == POWER_IDLE) {
                 digitalWrite(OPTO_PIN, LOW);
                 digitalWrite(POWER_LED_PIN, LOW);
-                
-                // ================ ESP.restart() PC:N SAMMUESSA ================
-                // Tämä tyhjentää Bluepad32:n tilat ja mahdollistaa
-                // ohjaimen uudelleenhavaitsemisen
-                Serial.println("PC sammui - Käynnistetään ESP32 uudelleen 2 sekunnin kuluttua...");
-                delay(2000);
-                ESP.restart();
             }
         }
     }
@@ -199,7 +191,6 @@ void handlePowerStates() {
     switch (powerState) {
         case POWER_ON_START:
             Serial.println("POWER ON START - Setting relays");
-            btStop();
             digitalWrite(OPTO_PIN, HIGH);
             digitalWrite(EXTRA_PIN, HIGH);
             digitalWrite(POWER_LED_PIN, HIGH);
@@ -223,7 +214,6 @@ void handlePowerStates() {
                 } else {
                     Serial.println("WARNING: PC did not power on! Turning relay OFF");
                     digitalWrite(OPTO_PIN, LOW);
-                    btStart();
                 }
                 powerState = POWER_IDLE;
             }
@@ -296,18 +286,8 @@ void handlePcStates() {
         }
     }
     
-    // BLUETOOTH OHJAUS PC:N TILAN MUKAAN
-    static bool lastBTPcState = false;
-    if (filteredPcState != lastBTPcState) {
-        if (filteredPcState == HIGH) {
-            Serial.println("PC ON - DISABLE BLUETOOTH");
-            btStop();
-        } else {
-            Serial.println("PC OFF - ENABLE BLUETOOTH");
-            btStart();
-        }
-        lastBTPcState = filteredPcState;
-    }
+    // BLE scanning is managed by xbox_simple.h — onResult() checks
+    // getStablePcState() directly, so no explicit enable/disable needed here.
     
     updatePcState();
 }
