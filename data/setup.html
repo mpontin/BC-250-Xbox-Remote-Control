@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>BC-250 Power Controller - Setup</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* Enhanced styles for setup page */
+    .setup-container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    
+    .settings-section {
+      background: #14141f;
+      border: 2px solid #2a2a3a;
+      padding: 30px;
+      border-radius: 8px;
+      margin-bottom: 40px;
+      box-shadow: 0 0 30px rgba(0, 217, 255, 0.15);
+    }
+    
+    .lock-hid-message {
+      margin-top: 10px;
+      padding: 12px;
+      background: #0a0a0f;
+      border-left: 4px solid #00d9ff;
+      font-family: 'Share Tech Mono', monospace;
+      color: #00d9ff;
+      font-size: 0.95rem;
+    }
+
+    .lock-hid-message strong {
+      color: #fff;
+      display: block;
+      margin-bottom: 5px;
+    }
+    
+    .info-text {
+      color: #8899aa;
+      font-size: 0.9rem;
+      margin-top: 8px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .status-message {
+      margin: 10px 0;
+      padding: 10px;
+      background: #0a0a0f;
+      border-left: 4px solid #8899aa;
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    .btn-green {
+      background: #00aa00;
+      border-color: #00ff00;
+    }
+
+    .btn-red {
+      background: #5a2a2a;
+      border-color: #aa0000;
+    }
+
+    .btn-green:hover, .btn-red:hover {
+      filter: brightness(1.2);
+    }
+    
+    .mac-display {
+      background: #0a0a0f;
+      border: 2px solid #2a2a3a;
+      padding: 20px;
+      border-radius: 4px;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 1.2rem;
+      text-align: center;
+      letter-spacing: 2px;
+      color: #00d9ff;
+      margin: 15px 0;
+    }
+    
+    .badge {
+      display: inline-block;
+      padding: 5px 10px;
+      background: #1a1a2a;
+      border-left: 2px solid #00d9ff;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 0.8rem;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <a href="/" class="logo" aria-label="Steam Machine logo">
+      <img src="steam-machines.svg" alt="Steam Machines" width="180" height="50">
+    </a>
+    <nav class="navbar" role="navigation" aria-label="Main navigation">
+      <a href="/">HOME</a>
+      <a href="/setup">SETUP</a>
+      <a href="/update">UPDATE</a>
+    </nav>
+  </header>
+  
+  <main class="home">
+    <div class="home-content setup-container">
+      <h1>🌐 WIFI SETTINGS</h1>
+      
+      <div class="settings-section">
+        <div id="wifiStatus" style="margin-bottom:20px;">LOADING STATUS...</div>
+        
+        <button onclick="scanWiFi()" class="btn" style="width:100%; margin:10px 0;">📡 SCAN NETWORKS</button>
+        
+        <div id="networkList" style="margin:20px 0;"></div>
+        
+        <label style="display:block; margin:20px 0;">
+          <strong style="font-family:'Share Tech Mono';">SSID (NETWORK NAME):</strong>
+          <input type="text" id="wifiSsid" placeholder="Enter WiFi network name" value="" style="width:100%; padding:15px; margin-top:8px; background:#0a0a0f; border:2px solid #2a2a3a; color:#fff; border-radius:4px; font-family:'Share Tech Mono';">
+          <div class="info-text">Click on a network above to fill this automatically</div>
+        </label>
+        
+        <label style="display:block; margin:20px 0;">
+          <strong style="font-family:'Share Tech Mono';">PASSWORD:</strong>
+          <input type="password" id="wifiPassword" placeholder="Enter WiFi password" style="width:100%; padding:15px; margin-top:8px; background:#0a0a0f; border:2px solid #2a2a3a; color:#fff; border-radius:4px; font-family:'Share Tech Mono';">
+        </label>
+        
+        <button onclick="saveWiFi()" class="btn" style="width:100%;">💾 SAVE & REBOOT</button>
+        <div id="wifiSaveStatus" style="margin-top:15px;"></div>
+      </div>
+      
+      <h1>🎮 XBOX CONTROLLER SETUP</h1>
+
+      <div class="settings-section">
+        <label style="display:flex; align-items:center; margin:20px 0; cursor:pointer;">
+          <input type="checkbox" id="xboxEnabled" style="width:20px; height:20px; margin-right:12px; accent-color:#00d9ff;">
+          <strong style="font-family:'Share Tech Mono';">ENABLE XBOX CONTROLLER SUPPORT</strong>
+        </label>
+
+        <!-- Nearby controller status -->
+        <div id="controllerStatus" class="status-message" style="margin-bottom:20px;"></div>
+
+        <!-- Slot counter -->
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <strong style="font-family:'Share Tech Mono'; color:#00d9ff;">SAVED CONTROLLERS</strong>
+          <span id="slotCounter" class="badge">0 / 5 SLOTS</span>
+        </div>
+
+        <!-- MAC list -->
+        <div id="macList" style="margin-bottom:16px; min-height:40px;">
+          <div style="color:#8899aa; font-family:'Share Tech Mono'; font-size:0.9rem; padding:12px; text-align:center;">
+            NO CONTROLLERS SAVED
+          </div>
+        </div>
+
+        <!-- Add / Clear buttons -->
+        <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+          <button onclick="addCurrentController()" class="btn btn-green" style="flex:1 1 200px; padding:15px;" id="addBtn">
+            <i class='bx bx-plus'></i> ADD CURRENT CONTROLLER
+          </button>
+          <button onclick="clearAllMacs()" class="btn btn-red" style="flex:1 1 200px; padding:15px;">
+            <i class='bx bx-trash'></i> REMOVE ALL
+          </button>
+        </div>
+
+        <div class="lock-hid-message">
+          <strong>ℹ️ HOW IT WORKS</strong>
+          <div style="margin-top:5px; color:#8899aa; font-size:0.85rem;">
+            <span style="color:#00d9ff;">• Up to 5 controllers can be saved. Any of them will wake the PC.</span><br>
+            <span style="color:#8899aa;">• Press the Xbox (Guide) button so it appears as "Current Controller", then click ADD.</span><br>
+            <span style="color:#8899aa;">• First controller seen is saved automatically if the list is empty.</span><br>
+            <span style="color:#ffaa00;">• With no controllers saved, any controller can wake the PC.</span>
+          </div>
+        </div>
+
+        <button onclick="saveXbox()" class="btn" style="width:100%; margin-top:30px;">💾 SAVE SETTINGS</button>
+        <div id="xboxStatus" style="margin-top:15px;"></div>
+      </div>
+
+      <h1>🚫 CONTROLLER BLACKLIST</h1>
+
+      <div class="settings-section">
+        <p class="info-text" style="margin-bottom:16px;">
+          Blacklisted controllers are permanently blocked even if they are in the allowed list.
+          Use this to block a specific controller by MAC address.
+        </p>
+
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+          <strong style="font-family:'Share Tech Mono'; color:#ff6666;">BLOCKED CONTROLLERS</strong>
+          <span id="blacklistCounter" class="badge" style="border-color:#aa0000; color:#ff6666;">0 / 10 SLOTS</span>
+        </div>
+
+        <div id="blacklistEntries" style="margin-bottom:16px; min-height:40px;">
+          <div style="color:#8899aa; font-family:'Share Tech Mono'; font-size:0.9rem; padding:12px; text-align:center;">
+            NO CONTROLLERS BLACKLISTED
+          </div>
+        </div>
+
+        <!-- Add by current controller or manual entry -->
+        <div style="display:flex; gap:10px; margin-bottom:16px; flex-wrap:wrap;">
+          <button onclick="blacklistCurrentController()" class="btn btn-red" style="flex:1 1 200px; padding:15px;">
+            <i class='bx bx-block'></i> BLOCK CURRENT CONTROLLER
+          </button>
+        </div>
+
+        <label style="display:block; margin-bottom:16px;">
+          <strong style="font-family:'Share Tech Mono'; font-size:0.85rem;">OR ENTER MAC MANUALLY:</strong>
+          <div style="display:flex; gap:8px; margin-top:8px;">
+            <input type="text" id="blacklistMacInput" placeholder="aa:bb:cc:dd:ee:ff"
+              style="flex:1; padding:12px; background:#0a0a0f; border:2px solid #2a2a3a; color:#fff; border-radius:4px; font-family:'Share Tech Mono';">
+            <button onclick="blacklistManualMac()" class="btn btn-red" style="padding:12px 20px; white-space:nowrap;">
+              + BLOCK
+            </button>
+          </div>
+        </label>
+
+        <div id="blacklistStatus" class="status-message" style="display:none;"></div>
+      </div>
+    </div>
+  </main>
+  
+  <footer class="footer">
+    <p>© 2026 BC-250 POWER CONTROLLER</p>
+  </footer>
+  
+  <script>
+    async function loadWiFiStatus() {
+      try {
+        const res = await fetch('/api/wifi/config');
+        const data = await res.json();
+        
+        let status = '📶 ';
+        if (data.apMode) {
+          status += 'ACCESS POINT MODE - CONFIGURE WIFI BELOW';
+        } else if (data.configured) {
+          status += 'CONNECTED TO: ' + data.ssid;
+        } else {
+          status += 'NOT CONFIGURED - ENTER WIFI DETAILS BELOW';
+        }
+        document.getElementById('wifiStatus').innerText = status;
+        document.getElementById('wifiSsid').value = data.ssid || '';
+      } catch (e) {
+        document.getElementById('wifiStatus').innerText = '❌ ERROR LOADING STATUS';
+        console.error(e);
+      }
+    }
+    
+    async function scanWiFi() {
+      document.getElementById('networkList').innerHTML = '🔄 SCANNING...';
+      
+      try {
+        await fetch('/api/wifi/scan');
+        
+        setTimeout(async () => {
+          try {
+            const res = await fetch('/api/wifi/scan');
+            const networks = await res.json();
+            
+            if (networks.scanning) {
+              document.getElementById('networkList').innerHTML = '⏳ STILL SCANNING...';
+              return;
+            }
+            
+            if (networks.length === 0) {
+              document.getElementById('networkList').innerHTML = '📭 NO NETWORKS FOUND';
+              return;
+            }
+            
+            let html = '<h3 style="margin-bottom:15px; font-family: Share Tech Mono; color: #00d9ff;">AVAILABLE NETWORKS:</h3><ul style="list-style:none; padding:0;">';
+            networks.forEach(net => {
+              const encrypted = net.encryption ? '🔒' : '🔓';
+              html += `<li onclick="document.getElementById('wifiSsid').value='${net.ssid.replace(/'/g, "\\'")}'" style="padding:12px; border-bottom:1px solid #2a2a3a; cursor:pointer; font-family:Share Tech Mono; transition:all 0.3s;" onmouseover="this.style.background='#1a1a2a'" onmouseout="this.style.background='transparent'">
+                         ${encrypted} <strong>${net.ssid}</strong> 
+                         <span style="color:#8899aa; float:right;">${net.rssi} dBm</span>
+                       </li>`;
+            });
+            html += '</ul>';
+            document.getElementById('networkList').innerHTML = html;
+          } catch (e) {
+            document.getElementById('networkList').innerHTML = '❌ SCAN FAILED';
+            console.error(e);
+          }
+        }, 2000);
+      } catch (e) {
+        document.getElementById('networkList').innerHTML = '❌ SCAN FAILED';
+        console.error(e);
+      }
+    }
+    
+    async function saveWiFi() {
+      const ssid = document.getElementById('wifiSsid').value.trim();
+      const password = document.getElementById('wifiPassword').value;
+      
+      if (!ssid) {
+        document.getElementById('wifiSaveStatus').innerText = '❌ SSID IS REQUIRED!';
+        return;
+      }
+      
+      document.getElementById('wifiSaveStatus').innerText = '💾 SAVING AND REBOOTING...';
+      
+      try {
+        const res = await fetch('/api/wifi/config', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ssid: ssid, password: password})
+        });
+        
+        const responseText = await res.text();
+        
+        if (res.ok) {
+          document.getElementById('wifiSaveStatus').innerHTML = '✅ SAVED! REBOOTING IN 3 SECONDS...<br>CONNECT TO YOUR WIFI NETWORK AFTER REBOOT.';
+          setTimeout(() => {
+            window.location.href = '/';
+          }, 3000);
+        } else {
+          document.getElementById('wifiSaveStatus').innerText = '❌ ERROR SAVING: ' + responseText;
+        }
+      } catch (e) {
+        document.getElementById('wifiSaveStatus').innerText = '❌ CONNECTION ERROR: ' + e.message;
+        console.error(e);
+      }
+    }
+    
+    function renderMacList(macs, maxControllers) {
+      const listDiv = document.getElementById('macList');
+      const counter = document.getElementById('slotCounter');
+      counter.innerText = macs.length + ' / ' + maxControllers + ' SLOTS';
+
+      if (macs.length === 0) {
+        listDiv.innerHTML = '<div style="color:#8899aa; font-family:\'Share Tech Mono\'; font-size:0.9rem; padding:12px; text-align:center;">NO CONTROLLERS SAVED</div>';
+        return;
+      }
+
+      listDiv.innerHTML = macs.map((mac, i) =>
+        `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px 15px; border-bottom:1px solid #2a2a3a; font-family:'Share Tech Mono';">
+          <span style="color:#00d9ff; letter-spacing:1px;">${mac}</span>
+          <button onclick="removeMac('${mac}')" style="background:#5a2a2a; border:1px solid #aa0000; color:#ff6666; padding:5px 12px; cursor:pointer; font-family:'Share Tech Mono'; font-size:0.8rem; border-radius:3px;">✕ REMOVE</button>
+        </div>`
+      ).join('');
+    }
+
+    async function loadXbox() {
+      try {
+        const res = await fetch('/api/xbox/config');
+        const data = await res.json();
+        document.getElementById('xboxEnabled').checked = data.enabled || false;
+
+        const macs = data.macAddresses || [];
+        const max = data.maxControllers || 5;
+        renderMacList(macs, max);
+
+        const statusDiv = document.getElementById('controllerStatus');
+        if (macs.length > 0) {
+          statusDiv.innerHTML = '🔒 ' + macs.length + ' controller(s) saved — only these can wake the PC';
+          statusDiv.style.borderLeftColor = '#00d9ff';
+        } else {
+          statusDiv.innerHTML = '⚠️ NO CONTROLLERS SAVED — any controller can wake the PC';
+          statusDiv.style.borderLeftColor = '#aa5500';
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function addCurrentController() {
+      const statusDiv = document.getElementById('controllerStatus');
+      statusDiv.innerHTML = '🔍 LOOKING FOR NEARBY CONTROLLER...';
+      statusDiv.style.borderLeftColor = '#8899aa';
+
+      try {
+        const res = await fetch('/api/xbox/connected-mac');
+        const data = await res.json();
+
+        if (!data.connected || !data.macAddress) {
+          statusDiv.innerHTML = '❌ NO CONTROLLER DETECTED. Press the Xbox (Guide) button, then try again.';
+          statusDiv.style.borderLeftColor = '#aa0000';
+          return;
+        }
+
+        const addRes = await fetch('/api/xbox/add-mac', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({macAddress: data.macAddress})
+        });
+
+        if (addRes.ok) {
+          statusDiv.innerHTML = '✅ ADDED: ' + data.macAddress;
+          statusDiv.style.borderLeftColor = '#00aa00';
+          loadXbox();
+        } else {
+          const err = await addRes.text();
+          statusDiv.innerHTML = '❌ ' + err;
+          statusDiv.style.borderLeftColor = '#aa0000';
+        }
+      } catch (e) {
+        statusDiv.innerHTML = '❌ ERROR: ' + e.message;
+        statusDiv.style.borderLeftColor = '#aa0000';
+        console.error(e);
+      }
+    }
+
+    async function removeMac(mac) {
+      if (!confirm('Remove controller ' + mac + '?')) return;
+
+      try {
+        const res = await fetch('/api/xbox/remove-mac', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({macAddress: mac})
+        });
+
+        if (res.ok) {
+          loadXbox();
+        } else {
+          alert('Failed to remove: ' + await res.text());
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function clearAllMacs() {
+      if (!confirm('Remove ALL saved controllers? Any controller will be able to wake the PC until you add new ones.')) return;
+
+      const statusDiv = document.getElementById('controllerStatus');
+      try {
+        const res = await fetch('/api/xbox/unlock', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'}
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          statusDiv.innerHTML = '🔓 ' + data.message;
+          statusDiv.style.borderLeftColor = '#aa5500';
+          loadXbox();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    async function saveXbox() {
+      document.getElementById('xboxStatus').innerText = '💾 SAVING...';
+      try {
+        const res = await fetch('/api/xbox/config', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            enabled: document.getElementById('xboxEnabled').checked,
+            autoConnect: false
+            // macAddresses omitted = keep existing list unchanged
+          })
+        });
+
+        if (res.ok) {
+          document.getElementById('xboxStatus').innerHTML = '✅ SAVED!';
+          loadXbox();
+        } else {
+          document.getElementById('xboxStatus').innerHTML = '❌ ERROR: ' + await res.text();
+        }
+      } catch (e) {
+        document.getElementById('xboxStatus').innerHTML = '❌ CONNECTION ERROR: ' + e.message;
+        console.error(e);
+      }
+    }
+
+    async function updateControllerStatus() {
+      try {
+        const res = await fetch('/api/xbox/connected-mac');
+        const data = await res.json();
+        const addBtn = document.getElementById('addBtn');
+        if (addBtn) addBtn.disabled = !data.connected;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // ---- Blacklist ----
+
+    function renderBlacklist(entries, max) {
+      const div = document.getElementById('blacklistEntries');
+      const counter = document.getElementById('blacklistCounter');
+      counter.innerText = entries.length + ' / ' + max + ' SLOTS';
+
+      if (entries.length === 0) {
+        div.innerHTML = '<div style="color:#8899aa; font-family:\'Share Tech Mono\'; font-size:0.9rem; padding:12px; text-align:center;">NO CONTROLLERS BLACKLISTED</div>';
+        return;
+      }
+
+      div.innerHTML = entries.map(mac =>
+        `<div style="display:flex; justify-content:space-between; align-items:center; padding:12px 15px; border-bottom:1px solid #2a2a3a; font-family:'Share Tech Mono';">
+          <span style="color:#ff6666; letter-spacing:1px;">🚫 ${mac}</span>
+          <button onclick="removeFromBlacklist('${mac}')" style="background:#5a2a2a; border:1px solid #aa0000; color:#ff6666; padding:5px 12px; cursor:pointer; font-family:'Share Tech Mono'; font-size:0.8rem; border-radius:3px;">✕ UNBLOCK</button>
+        </div>`
+      ).join('');
+    }
+
+    async function loadBlacklist() {
+      try {
+        const res = await fetch('/api/xbox/blacklist');
+        const data = await res.json();
+        renderBlacklist(data.blacklist || [], data.maxBlacklist || 10);
+      } catch (e) { console.error(e); }
+    }
+
+    function showBlacklistStatus(msg, color) {
+      const div = document.getElementById('blacklistStatus');
+      div.style.display = 'block';
+      div.style.borderLeftColor = color;
+      div.innerHTML = msg;
+      setTimeout(() => { div.style.display = 'none'; }, 4000);
+    }
+
+    async function blacklistCurrentController() {
+      try {
+        const res = await fetch('/api/xbox/connected-mac');
+        const data = await res.json();
+        if (!data.connected || !data.macAddress) {
+          showBlacklistStatus('❌ No controller detected nearby', '#aa0000');
+          return;
+        }
+        await doBlacklist(data.macAddress);
+      } catch (e) { showBlacklistStatus('❌ ' + e.message, '#aa0000'); }
+    }
+
+    async function blacklistManualMac() {
+      const mac = document.getElementById('blacklistMacInput').value.trim();
+      if (!mac) { showBlacklistStatus('❌ Enter a MAC address', '#aa0000'); return; }
+      await doBlacklist(mac);
+      document.getElementById('blacklistMacInput').value = '';
+    }
+
+    async function doBlacklist(mac) {
+      const res = await fetch('/api/xbox/blacklist/add', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({macAddress: mac})
+      });
+      if (res.ok) {
+        showBlacklistStatus('✅ Blocked: ' + mac, '#aa0000');
+        loadBlacklist();
+      } else {
+        showBlacklistStatus('❌ ' + await res.text(), '#aa0000');
+      }
+    }
+
+    async function removeFromBlacklist(mac) {
+      if (!confirm('Unblock ' + mac + '?')) return;
+      const res = await fetch('/api/xbox/blacklist/remove', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({macAddress: mac})
+      });
+      if (res.ok) loadBlacklist();
+    }
+
+    window.onload = function() {
+      loadWiFiStatus();
+      loadXbox();
+      loadBlacklist();
+      setInterval(updateControllerStatus, 2000);
+    };
+  </script>
+</body>
+</html>
