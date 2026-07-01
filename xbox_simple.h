@@ -36,13 +36,15 @@ class XboxSimple : public BLEAdvertisedDeviceCallbacks {
     // All String/file operations are deferred to handle() on the main loop.
     // ----------------------------------------------------------------
     void onResult(BLEAdvertisedDevice advertisedDevice) override {
-        String mac = advertisedDevice.getAddress().toString().c_str();
-        int rssi  = advertisedDevice.getRSSI();
+        // Use char arrays only — no String/heap allocation in BLE task
+        char mac[18] = {0};
+        strncpy(mac, advertisedDevice.getAddress().toString().c_str(), sizeof(mac) - 1);
+        int rssi = advertisedDevice.getRSSI();
 
         // Blacklist: silently drop banned MACs
         for (int i = 0; i < MAX_BLACKLIST; i++) {
             if (blacklistedMacs[i].length() > 0 &&
-                mac.equalsIgnoreCase(blacklistedMacs[i])) {
+                strcasecmp(mac, blacklistedMacs[i].c_str()) == 0) {
                 return;
             }
         }
@@ -55,29 +57,37 @@ class XboxSimple : public BLEAdvertisedDeviceCallbacks {
 
         if (!xboxEnabled) return;
 
+        // Clean MAC inline — no heap allocation
+        char macClean[13] = {0};
+        int j = 0;
+        for (int i = 0; mac[i] && j < 12; i++) {
+            if (mac[i] != ':' && mac[i] != '-')
+                macClean[j++] = toupper((unsigned char)mac[i]);
+        }
+
         // Check allowed list
         bool allowed = false;
         if (!hasAnyMac()) {
-            // No saved controllers — auto-pair if close enough (RSSI filter)
             if (rssi >= AUTO_PAIR_RSSI && !macAutoSaved) {
-                strncpy(pendingAutoSaveMac, mac.c_str(), sizeof(pendingAutoSaveMac) - 1);
+                strncpy(pendingAutoSaveMac, mac, sizeof(pendingAutoSaveMac) - 1);
                 pendingAutoSave = true;
-                macAutoSaved = true;  // prevent re-entry from the next packet
+                macAutoSaved = true;
             }
             allowed = true;
         } else {
-            String macClean = cleanMac(mac);
             for (int i = 0; i < MAX_CONTROLLERS; i++) {
-                if (allowedMacs[i] == macClean) { allowed = true; break; }
+                if (allowedMacs[i].length() > 0 &&
+                    strcasecmp(macClean, allowedMacs[i].c_str()) == 0) {
+                    allowed = true;
+                    break;
+                }
             }
         }
 
         if (allowed) {
-            // Record last-seen for the web UI connected-mac endpoint
-            strncpy(lastSeenMacBuf, mac.c_str(), sizeof(lastSeenMacBuf) - 1);
+            strncpy(lastSeenMacBuf, mac, sizeof(lastSeenMacBuf) - 1);
             lastSeenTime = millis();
 
-            // Schedule a wake if the cooldown has elapsed
             if (millis() - lastWakeTime > WAKE_COOLDOWN_MS) {
                 triggerWake  = true;
                 lastWakeTime = millis();
@@ -139,8 +149,8 @@ public:
         BLEScan* pScan = BLEDevice::getScan();
         pScan->setAdvertisedDeviceCallbacks(this);
         pScan->setActiveScan(true);
-        pScan->setInterval(100);
-        pScan->setWindow(99);
+        pScan->setInterval(400);
+        pScan->setWindow(40);
         pScan->start(1, xboxScanComplete, false);
         Serial.println("XBOX: BLE scan started (non-blocking, auto-restart)");
     }

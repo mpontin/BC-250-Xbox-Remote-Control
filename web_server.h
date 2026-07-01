@@ -563,7 +563,7 @@ void setupWebServer() {
     server.begin();
     Serial.println("Web server started!");
     Serial.print("  - IP: ");
-    Serial.println(WiFi.localIP());
+    Serial.println(apMode ? WiFi.softAPIP() : WiFi.localIP());
 }
 
 #endif // WEB_SERVER_H

@@ -127,10 +127,10 @@ bool connectToWiFi() {
     if (!wifiConfigured || wifiSSID.length() == 0) {
         apMode = true;
         WiFi.mode(WIFI_AP);
-        WiFi.softAP("BC-250-POWER-CONTROL", "");
+        WiFi.softAP("BC-250-POWER-CONTROL", "bc250admin");
         return true;
     }
-    
+
     WiFi.mode(WIFI_STA);
     String hostname = "bc250-" + String((uint32_t)ESP.getEfuseMac(), HEX);
     WiFi.setHostname(hostname.c_str());
@@ -148,7 +148,7 @@ bool connectToWiFi() {
     } else {
         apMode = true;
         WiFi.mode(WIFI_AP);
-        WiFi.softAP("BC-250-POWER-CONTROL", "");
+        WiFi.softAP("BC-250-POWER-CONTROL", "bc250admin");
         return false;
     }
 }
@@ -400,10 +400,7 @@ void loop() {
     handlePowerStates();
 
     // ================ WEB-PALVELIN ================
-    if (now - lastServerHandle >= serverHandleInterval) {
-        server.handleClient();
-        lastServerHandle = now;
-    }
+    server.handleClient();
     
     // ================ XBOX-OHJAIMEN KÄSITTELY ================
     // Called every iteration: tracks PC shutdown, processes wake trigger.
