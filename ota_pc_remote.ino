@@ -8,10 +8,10 @@
 #include "pins.h"
 #include "xbox_simple.h"
 
-// TÄRKEÄÄ: Include pc_control.h ENSIN, jotta PowerState tunnetaan
+// IMPORTANT: Include pc_control.h FIRST so PowerState is known
 #include "pc_control.h"
 
-// Globaalit muuttujat
+// Global variables
 WebServer server(80);
 
 bool pcIsOn = false;
@@ -20,17 +20,17 @@ bool forceShutdown = false;
 unsigned long forceShutdownStartTime = 0;
 const unsigned long forceShutdownDuration = 5000;
 
-// WiFi-muuttujat
+// WiFi variables
 String wifiSSID = "";
 String wifiPassword = "";
 bool wifiConfigured = false;
 bool apMode = false;
 
-// Xbox-muuttujat
+// Xbox variables
 bool xboxEnabled = false;
 bool xboxAutoConnect = false;
 
-// OPTIMOIDUT INTERVALLIT
+// Loop timing intervals
 unsigned long lastPinRead = 0;
 const unsigned long pinReadInterval = 50;
 
@@ -43,34 +43,34 @@ const unsigned long pcStateHandleInterval = 50;
 unsigned long lastButtonDebounce = 0;
 const unsigned long debounceDelay = 50;
 
-// Välimuistissa olevat pinnien tilat
+// Cached pin states
 bool cachedButtonState = HIGH;
 bool lastStableButtonState = HIGH;
 bool buttonPressed = false;
 
-// Filtteröity PC:n tila
+// Filtered PC state
 bool filteredPcState = false;
 unsigned long lastPcChangeTime = 0;
 const unsigned long pcStableDelay = 100;
 
-// Power-tilakoneen muuttujat
+// Power state machine variables
 PowerState powerState = POWER_IDLE;
 unsigned long powerStateStartTime = 0;
 
-// Xbox-luokka
+// Xbox instance
 XboxSimple xboxSimple;
 
-// ================ PROTOTYYPIT ================
+// ================ PROTOTYPES ================
 bool getStablePcState();
 void startPowerOn();
 void startForceShutdown();
 void startNormalShutdown();
 void saveXboxConfig(bool enabled, bool autoConnect);
 
-// ================ CALLBACK-FUNKTIOT ================
+// ================ WEB SERVER (includes route handlers) ================
 #include "web_server.h"
 
-// ================ WiFi-konfiguraatio ================
+// ================ WiFi CONFIGURATION ================
 
 void saveWiFiConfig(String ssid, String pass) {
     File file = LittleFS.open("/wifi_config.json", "w");
@@ -153,11 +153,11 @@ bool connectToWiFi() {
     }
 }
 
-// ================ PC-tilan suodatus ================
+// ================ PC STATE FILTERING ================
 
 
 
-// ================ Xbox-funktiot ================
+// ================ XBOX FUNCTIONS ================
 
 void saveXboxConfig(bool enabled, bool autoConnect) {
     File file = LittleFS.open("/xbox_config.json", "w");
@@ -268,6 +268,20 @@ void setup() {
     Serial.println("Loading WiFi config...");
     loadWiFiConfig();
     
+    WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
+        Serial.printf("WiFi: client connected    — MAC %02x:%02x:%02x:%02x:%02x:%02x\n",
+            info.wifi_ap_staconnected.mac[0], info.wifi_ap_staconnected.mac[1],
+            info.wifi_ap_staconnected.mac[2], info.wifi_ap_staconnected.mac[3],
+            info.wifi_ap_staconnected.mac[4], info.wifi_ap_staconnected.mac[5]);
+    }, ARDUINO_EVENT_WIFI_AP_STACONNECTED);
+
+    WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
+        Serial.printf("WiFi: client disconnected — MAC %02x:%02x:%02x:%02x:%02x:%02x\n",
+            info.wifi_ap_stadisconnected.mac[0], info.wifi_ap_stadisconnected.mac[1],
+            info.wifi_ap_stadisconnected.mac[2], info.wifi_ap_stadisconnected.mac[3],
+            info.wifi_ap_stadisconnected.mac[4], info.wifi_ap_stadisconnected.mac[5]);
+    }, ARDUINO_EVENT_WIFI_AP_STADISCONNECTED);
+
     Serial.println("Connecting to WiFi...");
     connectToWiFi();
     
@@ -294,7 +308,7 @@ void setup() {
     Serial.println("Loading Xbox config...");
     loadXboxConfig();
 
-    Serial.println("Bluepad32 ready - waiting for controller pairing");
+    Serial.println("BLE ready - waiting for controller");
     
     Serial.println("Setting up web server...");
     setupWebServer();
@@ -305,24 +319,24 @@ void setup() {
 void loop() {
     unsigned long now = millis();
     
-    // ================ YKSINKERTAINEN RATKAISU: ESP32 UUDELLEENKÄYNNISTYS ================
+    // ================ 2-HOUR IDLE RESTART ================
     static unsigned long pcOffStartTime = 0;
-    
-    // Seuraa kuinka kauan PC on ollut sammuneena
+
+    // Track how long the PC has been off
     if (!pcIsOn && powerState == POWER_IDLE) {
         if (pcOffStartTime == 0) {
             pcOffStartTime = now;
-            Serial.println("PC sammui - uudelleenkäynnistys 2 tunnin kuluttua");
+            Serial.println("PC off - ESP32 will restart in 2 hours if PC stays off");
         }
-        
-        // JOS PC OLLUT SAMMUNEENA YLI 2 TUNTIA, KÄYNNISTÄ ESP32 UUDELLEEN
-        if (now - pcOffStartTime >= 7200000) { // 2 tuntia = 7200000 ms
-            Serial.println("=== PC ollut sammuneena 2 tuntia - ESP32 UUDELLEENKÄYNNISTYS ===");
+
+        // IF PC HAS BEEN OFF FOR MORE THAN 2 HOURS, RESTART ESP32
+        if (now - pcOffStartTime >= 7200000) { // 2 hours = 7200000 ms
+            Serial.println("=== PC off for 2 hours - ESP32 restarting ===");
             delay(1000);
             ESP.restart();
         }
     } else {
-        // PC on päällä tai käynnistymässä - nollaa ajastin
+        // PC is on or starting up — reset timer
         pcOffStartTime = 0;
     }
     
@@ -331,7 +345,7 @@ void loop() {
     static PowerState lastPowerState = POWER_IDLE;
     
     if (powerState != lastPowerState) {
-        // Tila on vaihtunut, tulosta uusi tila
+        // State changed — print new state
         Serial.print("STATE: ");
         switch(powerState) {
             case POWER_IDLE: Serial.print("IDLE"); break;
@@ -354,18 +368,18 @@ void loop() {
         lastStatePrint = now;
     }
     
-    // Tulosta tila 60 sekunnin välein
+    // Print state every 60 seconds
     if (now - lastStatePrint >= 60000) {
         Serial.print("HEARTBEAT: ");
         Serial.print(millis() / 1000);
         Serial.print("s - State: ");
         switch(powerState) {
-            case POWER_IDLE: 
+            case POWER_IDLE:
                 Serial.print("IDLE");
                 if (!pcIsOn) {
-                    Serial.print(" (uudelleenkäynnistys ");
+                    Serial.print(" (restart in ");
                     Serial.print((7200000 - (now - pcOffStartTime)) / 1000);
-                    Serial.print("s kuluttua)");
+                    Serial.print("s)");
                 }
                 break;
             case POWER_ON_START: Serial.print("ON_START"); break;
@@ -384,86 +398,105 @@ void loop() {
         lastStatePrint = now;
     }
 
-    // ================ PINNIN LUKU ================
+    // ================ PIN READ ================
     if (now - lastPinRead >= pinReadInterval) {
-        cachedButtonState = digitalRead(BUTTON_PIN);
+        bool newButtonState = digitalRead(BUTTON_PIN);
+        if (newButtonState != cachedButtonState) {
+            Serial.print("PIN: BUTTON_PIN (22) changed -> ");
+            Serial.println(newButtonState ? "HIGH (released)" : "LOW (pressed)");
+        }
+        cachedButtonState = newButtonState;
         lastPinRead = now;
     }
 
-    // ================ PC:N TILAN KÄSITTELY ================
+    // Periodic pin status dump every 5 seconds
+    static unsigned long lastPinDump = 0;
+    if (now - lastPinDump >= 5000) {
+        Serial.print("PINS: BUTTON(22)=");
+        Serial.print(digitalRead(BUTTON_PIN) ? "HIGH" : "LOW");
+        Serial.print("  PC_MONITOR(4)=");
+        Serial.print(digitalRead(PC_MONITOR_PIN) ? "HIGH" : "LOW");
+        Serial.print("  RELAY1(16)=");
+        Serial.print(digitalRead(OPTO_PIN) ? "HIGH" : "LOW");
+        Serial.print("  RELAY2(17)=");
+        Serial.println(digitalRead(EXTRA_PIN) ? "HIGH" : "LOW");
+        lastPinDump = now;
+    }
+
+    // ================ PC STATE HANDLING ================
     if (now - lastPcStateHandle >= pcStateHandleInterval) {
         handlePcStates();
         lastPcStateHandle = now;
     }
 
-    // ================ POWER-TILOJEN KÄSITTELY ================
+    // ================ POWER STATE HANDLING ================
     handlePowerStates();
 
-    // ================ WEB-PALVELIN ================
+    // ================ WEB SERVER ================
     server.handleClient();
-    
-    // ================ XBOX-OHJAIMEN KÄSITTELY ================
+
+    // ================ XBOX CONTROLLER HANDLING ================
     // Called every iteration: tracks PC shutdown, processes wake trigger.
     // BLE scanning itself runs in the background via the BLE stack task.
     xboxSimple.handle();
     
-    // ================ PAINIKKEEN KÄSITTELY ================
+    // ================ BUTTON HANDLING ================
     static unsigned long buttonPressStartTime = 0;
     static bool buttonPressDetected = false;
     static bool lastStableButtonState = HIGH;
-    
-    // Tarkista painikkeen tila debouncella
+
+    // Check button state with debounce
     if (cachedButtonState != lastStableButtonState) {
         lastButtonDebounce = now;
         lastStableButtonState = cachedButtonState;
     }
-    
-    // Jos tila on vakaa (debounce ohi)
+
+    // State is stable (debounce complete)
     if ((now - lastButtonDebounce) > debounceDelay) {
-        
-        // Painike painettiin alas (LOW)
+
+        // Button pressed down (LOW)
         if (cachedButtonState == LOW && !buttonPressDetected) {
             buttonPressDetected = true;
             buttonPressStartTime = now;
-            Serial.println("BUTTON: Painike painettu alas");
+            Serial.println("BUTTON: Pressed down");
         }
-        
-        // Painike vapautettiin (HIGH)
+
+        // Button released (HIGH)
         if (cachedButtonState == HIGH && buttonPressDetected) {
             unsigned long pressDuration = now - buttonPressStartTime;
             buttonPressDetected = false;
-            
-            Serial.print("BUTTON: Painike vapautettu - kesto: ");
+
+            Serial.print("BUTTON: Released - duration: ");
             Serial.print(pressDuration);
             Serial.println(" ms");
-            
-            // Tarkista PC:n tila (vain IDLE-tilassa)
+
+            // Check PC state (only in IDLE)
             if (powerState == POWER_IDLE) {
                 bool pcOn = getStablePcState();
-                
+
                 if (pcOn) {
-                    // PC ON PÄÄLLÄ
+                    // PC IS ON
                     if (pressDuration >= 5000) {
-                        // Pitkä painallus (yli 5s) = PAKKOSAMMUTUS
-                        Serial.println("BUTTON: Pitkä painallus (>5s) - PAKKOSAMMUTUS");
+                        // Long press (>5s) = FORCE SHUTDOWN
+                        Serial.println("BUTTON: Long press (>5s) - FORCE SHUTDOWN");
                         startForceShutdown();
                     } else {
-                        // Lyhyt painallus (alle 5s) = NORMAALI SAMMUTUS
-                        Serial.println("BUTTON: Lyhyt painallus (<5s) - NORMAALI SAMMUTUS");
+                        // Short press (<5s) = NORMAL SHUTDOWN
+                        Serial.println("BUTTON: Short press (<5s) - NORMAL SHUTDOWN");
                         startNormalShutdown();
                     }
                 } else {
-                    // PC ON SAMMUNUT
-                    Serial.println("BUTTON: PC sammunut - KÄYNNISTYS");
+                    // PC IS OFF
+                    Serial.println("BUTTON: PC off - POWER ON");
                     startPowerOn();
                 }
             } else {
-                Serial.print("BUTTON: Power-tila ei IDLE - komento hylätty. Nykyinen tila: ");
+                Serial.print("BUTTON: Power state not IDLE - command rejected. Current state: ");
                 Serial.println(powerState);
             }
         }
     }
-    
-    // ================ PIENI VIIVE ================
+
+    // ================ SMALL DELAY ================
     delay(1);
 }

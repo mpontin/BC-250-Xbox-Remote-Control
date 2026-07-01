@@ -24,7 +24,7 @@ extern bool wifiConfigured;
 extern bool apMode;
 extern XboxSimple xboxSimple;
 
-// Funktioprototyypit
+// Function prototypes
 void saveWiFiConfig(String ssid, String pass);
 bool getStablePcState();
 void startPowerOn();
@@ -87,11 +87,11 @@ void setupWebServer() {
     
     Serial.println("Setting up web server routes...");
     
-    // ========== TÄRKEÄÄ: POST-reitit ENNEN GET-reittejä! ==========
-    
-    // FIRMWARE UPDATE - POST (tämä käsittelee tiedoston lähetyksen)
+    // ========== IMPORTANT: POST routes BEFORE GET routes! ==========
+
+    // FIRMWARE UPDATE - POST (handles file upload)
     server.on("/update", HTTP_POST, []() {
-        // Tämä suoritetaan kun upload on valmis
+        // Runs when upload is complete
         if (Update.hasError()) {
             server.send(500, "text/plain", "Update failed!");
             Serial.println("Update failed!");
@@ -102,7 +102,7 @@ void setupWebServer() {
             ESP.restart();
         }
     }, []() {
-        // Tämä suoritetaan uploadin aikana
+        // Runs during upload
         HTTPUpload& upload = server.upload();
         
         if (upload.status == UPLOAD_FILE_START) {
@@ -115,7 +115,7 @@ void setupWebServer() {
             if (Update.write(upload.buf, upload.currentSize) != upload.currentSize) {
                 Update.printError(Serial);
             }
-            // Tulosta edistyminen joka 100kB välein
+            // Print progress every 10%
             static unsigned int lastProgress = 0;
             unsigned int progress = (Update.progress() * 100) / Update.size();
             if (progress / 10 != lastProgress / 10) {
@@ -131,22 +131,22 @@ void setupWebServer() {
         }
     });
     
-    // FIRMWARE UPDATE - GET (näyttää web-sivun)
+    // FIRMWARE UPDATE - GET (serves the update page)
     server.on("/update", HTTP_GET, []() {
         server.send(200, "text/html", updateHtml);
     });
     
-    // Etusivu
+    // Home page
     server.on("/", []() {
         server.send(200, "text/html", indexHtml);
     });
-    
-    // Setup-sivu
+
+    // Setup page
     server.on("/setup", []() {
         server.send(200, "text/html", setupHtml);
     });
-    
-    // CSS-tyylit
+
+    // CSS styles
     server.on("/style.css", []() {
         server.send(200, "text/css", styleCss);
     });
@@ -311,7 +311,7 @@ void setupWebServer() {
         }
     });
 
-    // API: Xbox konfiguraatio - GET
+    // API: Xbox configuration - GET
     server.on("/api/xbox/config", HTTP_GET, []() {
         StaticJsonDocument<512> doc;
         doc["enabled"] = xboxEnabled;
@@ -357,7 +357,7 @@ void setupWebServer() {
             }
         });
 
-    // API: Xbox konfiguraatio - POST (full replace of MAC list)
+    // API: Xbox configuration - POST (full replace of MAC list)
     server.on("/api/xbox/config", HTTP_POST, []() {
         if (!server.hasArg("plain")) {
             server.send(400, "text/plain", "Body missing");

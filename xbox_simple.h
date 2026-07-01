@@ -22,10 +22,12 @@ extern void startPowerOn();
 extern PowerState powerState;
 extern void saveXboxConfig(bool enabled, bool autoConnect);
 
-// Free function used as BLE scan-complete callback — auto-restarts the scan
+// Signals handle() to restart the scan from the main loop (not from within the callback)
+static volatile bool xboxScanRestartPending = false;
+
 static void xboxScanComplete(BLEScanResults results) {
     BLEDevice::getScan()->clearResults();
-    BLEDevice::getScan()->start(1, xboxScanComplete, false);
+    xboxScanRestartPending = true;
 }
 
 class XboxSimple : public BLEAdvertisedDeviceCallbacks {
@@ -149,8 +151,8 @@ public:
         BLEScan* pScan = BLEDevice::getScan();
         pScan->setAdvertisedDeviceCallbacks(this);
         pScan->setActiveScan(true);
-        pScan->setInterval(400);
-        pScan->setWindow(40);
+        pScan->setInterval(1600);
+        pScan->setWindow(16);
         pScan->start(1, xboxScanComplete, false);
         Serial.println("XBOX: BLE scan started (non-blocking, auto-restart)");
     }
@@ -159,6 +161,12 @@ public:
     // Main loop handler — call every loop() iteration
     // ----------------------------------------------------------------
     void handle() {
+        // Restart scan from main loop — safe to call here, unsafe inside the callback
+        if (xboxScanRestartPending) {
+            xboxScanRestartPending = false;
+            BLEDevice::getScan()->start(1, xboxScanComplete, false);
+        }
+
         bool pcOn = getStablePcState();
 
         // Detect PC shutdown transition → start cooldown
