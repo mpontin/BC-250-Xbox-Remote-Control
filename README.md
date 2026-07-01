@@ -1,8 +1,6 @@
 # BC-250 REMOTE PSU POWER CONTROLLER
 ESP32 2-Channel 5V Relay Module-based device for remote control of the BC-250 ATX power supply with web interface and Xbox controller support.
 
-<img width="909" height="541" alt="wires" src="https://github.com/user-attachments/assets/8f6ec507-48f0-44cf-aa08-43292f0b47fc" />
-
 ## Key Features
 
 - **Remote Power Control:** Turn PC on/off via web interface or physical button
