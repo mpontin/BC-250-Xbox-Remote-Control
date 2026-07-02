@@ -104,5 +104,3 @@ To clear all saved controllers, delete `/xbox_config.json` from the ESP32's Litt
 - When a saved controller is detected nearby, the PC powers on (15-second cooldown between triggers)
 - For 60 seconds after the PC shuts down, all controller wake events are ignored
 - When the PC is already on, the controller has no effect
-
-<img width="294" height="542" alt="wiring diagram" src="https://github.com/user-attachments/assets/1544a9e2-1a29-4ba2-bede-efac3149f9f3" />
