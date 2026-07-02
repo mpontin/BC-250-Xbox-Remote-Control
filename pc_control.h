@@ -231,22 +231,31 @@ void handlePowerStates() {
             }
             break;
 
-        case POWER_OFF_WAITING_POWEROFF:
-            // Wait for PC to shut down (filteredPcState goes LOW) and stay low for 4 seconds
-            if (filteredPcState == LOW) {  // USE FILTERED STATE
+        case POWER_OFF_WAITING_POWEROFF: {
+            // shutdownWaitStart tracks total time in this state independent of the 4s stable timer
+            static unsigned long shutdownWaitStart = 0;
+            if (shutdownWaitStart == 0) shutdownWaitStart = now;
+
+            if (filteredPcState == LOW) {
                 if (now - powerStateStartTime >= 4000) {
                     Serial.println("PC power-off confirmed - turning relay OFF");
                     digitalWrite(OPTO_PIN, LOW);
                     digitalWrite(POWER_LED_PIN, LOW);
                     powerState = POWER_IDLE;
-
+                    shutdownWaitStart = 0;
                     Serial.println("PC OFF - Controller reset handled elsewhere");
                 }
             } else {
-                // PC has not shut down yet — reset timer
-                powerStateStartTime = now;
+                powerStateStartTime = now;  // reset the 4s stable timer
+                if (now - shutdownWaitStart >= 60000) {
+                    Serial.println("WARNING: Shutdown timed out - OS may be blocking power-off, returning to idle");
+                    digitalWrite(POWER_LED_PIN, HIGH);  // PC is still on
+                    powerState = POWER_IDLE;
+                    shutdownWaitStart = 0;
+                }
             }
             break;
+        }
 
         case POWER_FORCE_START:
             Serial.println("Force shutdown - OPTO_PIN HIGH for 5000ms");

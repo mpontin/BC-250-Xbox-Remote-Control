@@ -58,15 +58,15 @@ void saveXboxConfig() {
     File file = LittleFS.open("/xbox_config.json", "w");
     if (!file) return;
 
-    StaticJsonDocument<512> doc;
+    StaticJsonDocument<1024> doc;
 
-    JsonArray macs = doc.createNestedArray("macAddresses");
+    JsonArray macs = doc["macAddresses"].to<JsonArray>();
     for (int i = 0; i < MAX_CONTROLLERS; i++) {
         String mac = xboxSimple.getAllowedMac(i);
         if (mac.length() > 0) macs.add(mac);
     }
 
-    JsonArray bl = doc.createNestedArray("blacklist");
+    JsonArray bl = doc["blacklist"].to<JsonArray>();
     for (int i = 0; i < MAX_BLACKLIST; i++) {
         String mac = xboxSimple.getBlacklistedMac(i);
         if (mac.length() > 0) bl.add(mac);
@@ -92,7 +92,7 @@ void loadXboxConfig() {
     File file = LittleFS.open("/xbox_config.json", "r");
     if (!file) return;
 
-    StaticJsonDocument<512> doc;
+    StaticJsonDocument<1024> doc;
     DeserializationError error = deserializeJson(doc, file);
     file.close();
 
@@ -160,11 +160,11 @@ void setup() {
         Serial.println("LittleFS mounted");
     }
 
-    Serial.println("Setting up BLE...");
-    xboxSimple.setupBLE();
-
     Serial.println("Loading Xbox config...");
     loadXboxConfig();
+
+    Serial.println("Setting up BLE...");
+    xboxSimple.setupBLE();
 
     Serial.println("=== BC-250 READY ===");
     Serial.println("  Short press        : Power on / Normal shutdown");

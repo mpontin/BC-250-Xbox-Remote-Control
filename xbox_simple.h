@@ -41,10 +41,20 @@ class XboxSimple : public BLEAdvertisedDeviceCallbacks {
         char mac[18] = {0};
         strncpy(mac, advertisedDevice.getAddress().toString().c_str(), sizeof(mac) - 1);
 
-        // Blacklist: silently drop banned MACs
+        // Clean MAC (no colons, uppercase) — used for both blacklist and allow-list checks
+        char macClean[13] = {0};
+        {
+            int j = 0;
+            for (int i = 0; mac[i] && j < 12; i++) {
+                if (mac[i] != ':' && mac[i] != '-')
+                    macClean[j++] = toupper((unsigned char)mac[i]);
+            }
+        }
+
+        // Blacklist: silently drop banned MACs (stored normalized, no colons, uppercase)
         for (int i = 0; i < MAX_BLACKLIST; i++) {
             if (blacklistedMacs[i].length() > 0 &&
-                strcasecmp(mac, blacklistedMacs[i].c_str()) == 0) {
+                strcasecmp(macClean, blacklistedMacs[i].c_str()) == 0) {
                 return;
             }
         }
@@ -56,14 +66,6 @@ class XboxSimple : public BLEAdvertisedDeviceCallbacks {
         if (getStablePcState() || powerState != POWER_IDLE) return;
 
         if (!xboxEnabled) return;
-
-        // Clean MAC inline — no heap allocation
-        char macClean[13] = {0};
-        int j = 0;
-        for (int i = 0; mac[i] && j < 12; i++) {
-            if (mac[i] != ':' && mac[i] != '-')
-                macClean[j++] = toupper((unsigned char)mac[i]);
-        }
 
         // Check allowed list
         bool allowed = false;
@@ -246,18 +248,6 @@ public:
         return false;
     }
 
-    bool removeAllowedMac(String mac) {
-        mac = cleanMac(mac);
-        for (int i = 0; i < MAX_CONTROLLERS; i++) {
-            if (allowedMacs[i] == mac) {
-                allowedMacs[i] = "";
-                Serial.println("XBOX: Removed from allowed: " + mac);
-                return true;
-            }
-        }
-        return false;
-    }
-
     // Returns formatted "XX:XX:XX:XX:XX:XX" or "" if slot empty
     String getAllowedMac(int index) {
         if (index < 0 || index >= MAX_CONTROLLERS) return "";
@@ -282,10 +272,10 @@ public:
     }
 
     bool addToBlacklist(String mac) {
-        mac.trim();
-        if (mac.length() == 0) return false;
+        mac = cleanMac(mac);  // strip colons/dashes, uppercase — same normalization as allow-list
+        if (mac.length() != 12) return false;
         for (int i = 0; i < MAX_BLACKLIST; i++)
-            if (blacklistedMacs[i].equalsIgnoreCase(mac)) return true;
+            if (blacklistedMacs[i] == mac) return true;  // already present
         for (int i = 0; i < MAX_BLACKLIST; i++) {
             if (blacklistedMacs[i].length() == 0) {
                 blacklistedMacs[i] = mac;
@@ -294,18 +284,6 @@ public:
             }
         }
         Serial.println("XBOX: Blacklist full (" + String(MAX_BLACKLIST) + " max)");
-        return false;
-    }
-
-    bool removeFromBlacklist(String mac) {
-        mac.trim();
-        for (int i = 0; i < MAX_BLACKLIST; i++) {
-            if (blacklistedMacs[i].equalsIgnoreCase(mac)) {
-                blacklistedMacs[i] = "";
-                Serial.println("XBOX: Removed from blacklist: " + mac);
-                return true;
-            }
-        }
         return false;
     }
 
