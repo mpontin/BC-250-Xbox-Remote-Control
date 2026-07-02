@@ -16,11 +16,10 @@
 #define SHUTDOWN_COOLDOWN_MS 60000 // ms of deafness after PC turns off
 
 extern bool xboxEnabled;
-extern bool xboxAutoConnect;
 extern bool getStablePcState();
 extern void startPowerOn();
 extern PowerState powerState;
-extern void saveXboxConfig(bool enabled, bool autoConnect);
+extern void saveXboxConfig();
 
 // Signals handle() to restart the scan from the main loop (not from within the callback)
 static volatile bool xboxScanRestartPending = false;
@@ -41,7 +40,6 @@ class XboxSimple : public BLEAdvertisedDeviceCallbacks {
         // Use char arrays only — no String/heap allocation in BLE task
         char mac[18] = {0};
         strncpy(mac, advertisedDevice.getAddress().toString().c_str(), sizeof(mac) - 1);
-        int rssi = advertisedDevice.getRSSI();
 
         // Blacklist: silently drop banned MACs
         for (int i = 0; i < MAX_BLACKLIST; i++) {
@@ -69,11 +67,14 @@ class XboxSimple : public BLEAdvertisedDeviceCallbacks {
 
         // Check allowed list
         bool allowed = false;
-        if (!hasAnyMac()) {
-            if (rssi >= AUTO_PAIR_RSSI && !macAutoSaved) {
+        if (pairingModeActive) {
+            // Pairing mode: save the first controller seen regardless of RSSI
+            if (!macAutoSaved) {
                 strncpy(pendingAutoSaveMac, mac, sizeof(pendingAutoSaveMac) - 1);
                 pendingAutoSave = true;
                 macAutoSaved = true;
+                pairingModeActive = false;
+                pairingCompleted = true;
             }
             allowed = true;
         } else {
@@ -116,6 +117,10 @@ private:
     // Shutdown cooldown state (written by main loop, read by BLE task via shutdownCooldownActive)
     volatile unsigned long lastShutdownTime = 0;
     bool          lastPcWasOn      = false;
+
+    // Pairing mode (set from main loop, cleared from BLE task when controller found)
+    volatile bool pairingModeActive = false;
+    volatile bool pairingCompleted  = false;
 
     // ---- helpers ----
 
@@ -184,7 +189,7 @@ public:
             String mac = String(pendingAutoSaveMac);
             memset(pendingAutoSaveMac, 0, sizeof(pendingAutoSaveMac));
             addAllowedMac(mac);
-            saveXboxConfig(xboxEnabled, xboxAutoConnect);
+            saveXboxConfig();
             Serial.println("✅ XBOX: Auto-saved MAC: " + mac);
         }
 
@@ -330,13 +335,32 @@ public:
         return (millis() - lastSeenTime < 5000);
     }
 
-    void disconnect() {}
-
-    void resetControllerData() {
-        lastSeenMacBuf[0] = 0;
-        lastSeenTime  = 0;
-        macAutoSaved  = false;
+    // ----------------------------------------------------------------
+    // Pairing mode
+    // ----------------------------------------------------------------
+    void enterPairingMode() {
+        pairingModeActive = true;
+        pairingCompleted  = false;
+        macAutoSaved      = false;
+        Serial.println("XBOX: Pairing mode active - waiting for controller");
     }
+
+    void exitPairingMode() {
+        pairingModeActive = false;
+        Serial.println("XBOX: Pairing mode cancelled");
+    }
+
+    bool isPairingMode() { return pairingModeActive; }
+
+    // Returns true once after pairing completes, then resets
+    bool wasPairingCompleted() {
+        if (pairingCompleted) {
+            pairingCompleted = false;
+            return true;
+        }
+        return false;
+    }
+
 };
 
 extern XboxSimple xboxSimple;

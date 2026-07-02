@@ -18,14 +18,11 @@ enum PowerState {
 };
 
 extern bool pcIsOn;
-extern bool shutdownRequested;
 extern bool forceShutdown;
 extern unsigned long forceShutdownStartTime;
-extern const unsigned long forceShutdownDuration;
 
 // Filter variables
 extern bool filteredPcState;
-extern unsigned long lastPcChangeTime;
 extern const unsigned long pcStableDelay;
 
 // Power state machine variables
@@ -111,7 +108,6 @@ void updatePcState() {
             // PC TURNED ON
             Serial.println("*** PC TURNED ON ***");
             pcIsOn = true;
-            shutdownRequested = false;
             forceShutdown = false;
 
             if (powerState == POWER_IDLE) {
@@ -122,7 +118,6 @@ void updatePcState() {
             // PC TURNED OFF
             Serial.println("*** PC TURNED OFF ***");
             pcIsOn = false;
-            shutdownRequested = false;
             forceShutdown = false;
 
             if (powerState == POWER_IDLE) {

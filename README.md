@@ -1,23 +1,58 @@
 # BC-250 REMOTE PSU POWER CONTROLLER
-ESP32 2-Channel 5V Relay Module-based device for remote control of the BC-250 ATX power supply with web interface and Xbox controller support.
+
+ESP32 2-Channel 5V Relay Module-based device for remote control of the BC-250 ATX power supply with Xbox controller support.
 
 ## Key Features
 
-- **Remote Power Control:** Turn PC on/off via web interface or physical button
+- **Physical Button Control:** Short press to power on/off, long press for force shutdown
 - **Xbox Controller Wake:** Press the Xbox (Guide) button to power on the PC via BLE proximity detection
 - **Multiple Controllers:** Save up to 5 controllers — any of them will wake the PC
 - **Controller Blacklist:** Permanently block up to 10 specific controllers by MAC address
 - **Shutdown Cooldown:** 60-second ignore window after PC shuts down, preventing accidental immediate re-wake
-- **WiFi Configuration:** Web-based setup with network scanning
-- **Over-the-Air Updates:** Firmware and filesystem updates via web interface
+- **Button Pairing Mode:** Hold the physical button for 5 seconds (PC off) to pair a new controller
+
+## Hardware
+
+- ESP32 2-Channel 5V Relay Module
+- Momentary LED push button
+- BC-250 ATX PSU
+
+## Wiring
+
+| ESP32 GPIO | Purpose |
+|-----------|---------|
+| 16 | Relay 1 — PS_ON hold (PSU enable) |
+| 17 | Relay 2 — Power button pulse |
+| 22 | Power button LED |
+| 23 | Momentary button switch |
+| 4 | BC-250 TPMS1 pin 9 (PC state monitor) |
+| 2 | Status LED (optional) |
+
+**Relay outputs:**
+
+| Relay | COM | NO | Connects to |
+|-------|-----|----|-------------|
+| Relay 1 | PS_ON (green wire) | GND | BC-250 PSU connector |
+| Relay 2 | Power button pad (P) | TPMS1 pin 17 (GND) | BC-250 power button |
+
+**Button wiring:**
+- Switch NO → GPIO 23
+- Switch COM → GND
+- LED + → GPIO 22
+- LED − → GND
+
+**PSU connector:**
+- +5VSB → board VCC (always-on standby power)
+- PS_ON → Relay 1 COM
+- GND → board GND
 
 ## Installation
 
 ### 1. Board setup
 
-Install the standard ESP32 Arduino core (no Bluepad32 platform required).
+Install the standard ESP32 Arduino core.
 
-Open Arduino IDE and go to **File > Preferences**.  
+Open Arduino IDE and go to **File > Preferences**.
 In "Additional Boards Manager URLs" add:
 ```
 https://raw.githubusercontent.com/espressif/arduino-esp32/gh-pages/package_esp32_index.json
@@ -26,45 +61,48 @@ Go to **Tools > Board > Boards Manager**, search for `esp32`, and install **esp3
 
 ### 2. Install libraries
 
-- [LittleFS (for ESP32)](https://github.com/lorol/LITTLEFS)
 - ArduinoJson
 
-The BLE libraries (`BLEDevice`, `BLEScan`) are included with the ESP32 Arduino core — no separate install needed.
+The BLE libraries (`BLEDevice`, `BLEScan`) and LittleFS are included with the ESP32 Arduino core — no separate install needed.
 
-### 3. Upload filesystem
+### 3. Partition scheme
 
-Upload the `data/` folder to LittleFS using the **Arduino ESP32 LittleFS Data Upload** tool before flashing the firmware.
+Go to **Tools > Partition Scheme** and select:
+```
+Minimal SPIFFS (1.9MB APP with OTA/190KB SPIFFS)
+```
+WiFi + BLE together require more flash than the default partition allows.
 
-## Setup Notes
+### 4. Flash
 
-- On first boot the device starts in **WiFi AP mode** (`BC-250-POWER-CONTROL`, no password). Connect and open `http://192.168.4.1` to configure.
-- AP mode can be slow — be patient. HTTPS is not supported.
-- Testing without the TPMS1 pin 9 signal connected causes instability.
+Upload the sketch. No filesystem upload step is required.
 
-## Controller Management
+## Button Operation
 
-Controllers are managed from the **Setup** page (`/setup`).
+| Action | PC state | Result |
+|--------|----------|--------|
+| Short press | Off | Power on |
+| Short press | On | Normal shutdown |
+| Hold 5s | Off | Pairing mode |
+| Hold 5s | On | Force shutdown |
 
-**Adding a controller:**
-1. Enable Xbox Controller Support and save.
-2. Press the Xbox (Guide) button on the controller to make it advertise over BLE.
-3. Click **ADD CURRENT CONTROLLER** — the nearby controller's MAC is saved automatically.
-4. Up to 5 controllers can be saved. Any saved controller will wake the PC.
+## Pairing a Controller
 
-**Auto-pairing:**  
-If the saved controller list is empty, the first controller seen within ~2 metres is saved automatically. This only triggers once — subsequent controllers require the Add button.
+1. With the PC off, **hold the button for 5 seconds**
+2. The power LED blinks rapidly — pairing mode is active (30 second window)
+3. Press the **Xbox (Guide) button** on your controller to make it advertise over BLE
+4. Hold the controller close to the ESP32
+5. The LED stops blinking when the controller MAC is saved
 
-**Blacklist:**  
-Block a specific controller permanently under the **Controller Blacklist** section. Blocked controllers are ignored even if they appear in the allowed list. You can block the currently nearby controller or enter a MAC address manually.
+Up to 5 controllers can be saved. Repeat the process to add more.
 
-**Removing a controller:**  
-Click the ✕ **REMOVE** button next to any saved MAC in the list, or use **REMOVE ALL** to clear the entire list (which re-enables auto-pairing).
+To clear all saved controllers, delete `/xbox_config.json` from the ESP32's LittleFS filesystem.
 
 ## Wake Behaviour
 
-- BLE scanning runs continuously in the background (non-blocking).
-- When a saved controller is detected, the PC powers on after a 15-second cooldown between triggers.
-- For 60 seconds after the PC shuts down, all controller wake events are ignored.
-- When the PC is already on, the controller has no effect.
+- BLE scanning runs continuously in the background
+- When a saved controller is detected nearby, the PC powers on (15-second cooldown between triggers)
+- For 60 seconds after the PC shuts down, all controller wake events are ignored
+- When the PC is already on, the controller has no effect
 
-<img width="294" height="542" alt="kuva" src="https://github.com/user-attachments/assets/1544a9e2-1a29-4ba2-bede-efac3149f9f3" />
+<img width="294" height="542" alt="wiring diagram" src="https://github.com/user-attachments/assets/1544a9e2-1a29-4ba2-bede-efac3149f9f3" />
