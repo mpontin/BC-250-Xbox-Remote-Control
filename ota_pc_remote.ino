@@ -388,8 +388,12 @@ void loop() {
                 String m = xboxSimple.getBlacklistedMac(i);
                 if (m.length() > 0) Serial.println("  " + m);
             }
+        } else if (line == "clear") {
+            xboxSimple.clearAllowedMacs();
+            saveXboxConfig();
+            Serial.println("CMD: Allowed list cleared — re-pair your controller");
         } else if (line.length() > 0) {
-            Serial.println("CMD: Unknown command. Available: blacklist <MAC>, list");
+            Serial.println("CMD: Unknown. Available: list, blacklist <MAC>, clear");
         }
     }
 

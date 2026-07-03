@@ -70,7 +70,13 @@ class XboxSimple : public BLEAdvertisedDeviceCallbacks {
         // Check allowed list
         bool allowed = false;
         if (pairingModeActive) {
-            // Pairing mode: save the first controller seen regardless of RSSI
+            // Only save devices that advertise "Xbox" or "Microsoft" in their name —
+            // prevents random nearby BLE devices from being saved during pairing
+            char nameRaw[32] = {0};
+            strncpy(nameRaw, advertisedDevice.getName().c_str(), sizeof(nameRaw) - 1);
+            for (int i = 0; nameRaw[i]; i++) nameRaw[i] = tolower((unsigned char)nameRaw[i]);
+            if (!strstr(nameRaw, "xbox") && !strstr(nameRaw, "microsoft")) return;
+
             if (!macAutoSaved) {
                 strncpy(pendingAutoSaveMac, mac, sizeof(pendingAutoSaveMac) - 1);
                 pendingAutoSave = true;
