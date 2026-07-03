@@ -106,6 +106,14 @@ void updatePcState() {
 
         if (filteredPcState == HIGH) {
             // PC TURNED ON
+            // Ignore unexpected power-on during the first 90s after boot — BC-250 may have
+            // startup transients on TPMS1 pin 9 before its rails are stable.
+            if (powerState == POWER_IDLE && millis() < 90000UL) {
+                Serial.println("STARTUP: PC_MONITOR_PIN went HIGH during holdoff — ignored");
+                filteredPcState = false;
+                debounceStableState = false;
+                return;
+            }
             Serial.println("*** PC TURNED ON ***");
             pcIsOn = true;
             forceShutdown = false;

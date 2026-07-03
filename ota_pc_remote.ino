@@ -165,6 +165,7 @@ void setup() {
 
     Serial.println("Setting up BLE...");
     xboxSimple.setupBLE();
+    Serial.println("Board BLE MAC: " + String(BLEDevice::getAddress().toString().c_str()));
 
     Serial.println("=== BC-250 READY ===");
     Serial.println("  Short press        : Power on / Normal shutdown");
@@ -360,6 +361,35 @@ void loop() {
                 Serial.print("BUTTON: Power state not IDLE - command rejected. Current state: ");
                 Serial.println(powerState);
             }
+        }
+    }
+
+    // ================ SERIAL COMMANDS ================
+    if (Serial.available()) {
+        String line = Serial.readStringUntil('\n');
+        line.trim();
+        if (line.startsWith("blacklist ")) {
+            String mac = line.substring(10);
+            mac.trim();
+            if (xboxSimple.addToBlacklist(mac)) {
+                saveXboxConfig();
+                Serial.println("CMD: Blacklisted " + mac);
+            } else {
+                Serial.println("CMD: Failed — list full or invalid MAC");
+            }
+        } else if (line == "list") {
+            Serial.println("--- Saved controllers ---");
+            for (int i = 0; i < MAX_CONTROLLERS; i++) {
+                String m = xboxSimple.getAllowedMac(i);
+                if (m.length() > 0) Serial.println("  " + m);
+            }
+            Serial.println("--- Blacklist ---");
+            for (int i = 0; i < MAX_BLACKLIST; i++) {
+                String m = xboxSimple.getBlacklistedMac(i);
+                if (m.length() > 0) Serial.println("  " + m);
+            }
+        } else if (line.length() > 0) {
+            Serial.println("CMD: Unknown command. Available: blacklist <MAC>, list");
         }
     }
 
